@@ -9,9 +9,9 @@
     "start": "electron .",
     "dev": "electron .",
     "server": "node server.js",
-    "dist": "electron-builder",
-    "dist:mac": "electron-builder --mac",
-    "dist:win": "electron-builder --win"
+    "dist": "electron-builder --publish never",
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:win": "electron-builder --win --publish never"
   },
   "dependencies": {
     "express": "^4.21.2"
@@ -23,6 +23,7 @@
   "build": {
     "appId": "com.lautibus.ytmp3",
     "productName": "YouTube Downloader",
+    "publish": null,
     "directories": {
       "output": "dist"
     },
