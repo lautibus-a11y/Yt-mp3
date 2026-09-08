@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Downloader</title>
+  <style>
+    :root {
+      --bg-base: #08090d;
+      --card-bg: rgba(26, 29, 38, 0.65);
+      --card-border: rgba(255, 255, 255, 0.09);
+      --card-border-inner: rgba(255, 255, 255, 0.04);
+      --input-bg: rgba(13, 15, 22, 0.75);
+      --input-border: rgba(255, 255, 255, 0.12);
+      --input-focus-border: #007aff;
+      --input-focus-ring: rgba(0, 122, 255, 0.28);
+      --segmented-bg: rgba(11, 13, 19, 0.85);
+      --segmented-active: rgba(255, 255, 255, 0.14);
+      --btn-primary: #007aff;
+      --btn-primary-hover: #006ee6;
+      --btn-primary-active: #005ec4;
+      --text-primary: #f5f5f7;
+      --text-secondary: #98989d;
+      --text-tertiary: #636366;
+      --traffic-close: #ff5f57;
+      --traffic-min: #febc2e;
+      --traffic-max: #28c840;
+      --danger: #ff453a;
+      --danger-bg: rgba(255, 69, 58, 0.12);
+      --danger-border: rgba(255, 69, 58, 0.3);
+      --success: #32d74b;
+      --success-bg: rgba(50, 215, 75, 0.12);
+      --success-border: rgba(50, 215, 75, 0.3);
+      --radius-window: 16px;
+      --radius-input: 10px;
+      --radius-btn: 10px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background-color: var(--bg-base);
+      background-image:
+        radial-gradient(ellipse 70% 45% at 50% -10%, rgba(94, 92, 230, 0.14), transparent 70%),
+        radial-gradient(ellipse 60% 40% at 50% 110%, rgba(0, 122, 255, 0.12), transparent 70%);
+      background-attachment: fixed;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      user-select: none;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 440px;
+    }
+
+    /* Tarjeta Glassmorphism estilo macOS */
+    .window-card {
+      position: relative;
+      background: var(--card-bg);
+      backdrop-filter: blur(30px) saturate(190%);
+      -webkit-backdrop-filter: blur(30px) saturate(190%);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-window);
+      box-shadow:
+        0 24px 48px -12px rgba(0, 0, 0, 0.65),
+        0 0 0 1px var(--card-border-inner),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+    }
+
+    /* Barra de título macOS */
+    .window-header {
+      display: flex;
+      align-items: center;
+      height: 48px;
+      padding: 0 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.02);
+      -webkit-app-region: drag;
+    }
+
+    .traffic-lights {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 52px;
+    }
+
+    body.is-electron .traffic-lights {
+      visibility: hidden;
+    }
+
+    .traffic-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      position: relative;
+    }
+
+    .dot-close {
+      background-color: var(--traffic-close);
+      box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.25);
+    }
+
+    .dot-min {
+      background-color: var(--traffic-min);
+      box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.25);
+    }
+
+    .dot-max {
+      background-color: var(--traffic-max);
+      box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.25);
+    }
+
+    .window-title {
+      flex: 1;
+      text-align: center;
+      margin-right: 52px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      color: var(--text-secondary);
+      pointer-events: none;
+    }
+
+    /* Cuerpo del formulario */
+    .window-body {
+      padding: 24px 20px 22px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      -webkit-app-region: no-drag;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: opacity 0.2s ease, max-height 0.25s ease;
+    }
+
+    .field-group.hidden {
+      display: none;
+    }
+
+    .field-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .text-input {
+      width: 100%;
+      height: 42px;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: var(--radius-input);
+      padding: 0 14px;
+      color: var(--text-primary);
+      font-size: 13.5px;
+      font-family: inherit;
+      outline: none;
+      user-select: text;
+      transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+    }
+
+    .text-input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    .text-input:focus {
+      background: rgba(13, 15, 22, 0.95);
+      border-color: var(--input-focus-border);
+      box-shadow: 0 0 0 3px var(--input-focus-ring);
+    }
+
+    /* Control segmentado macOS */
+    .segmented-control {
+      background: var(--segmented-bg);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 9px;
+      padding: 3px;
+      display: grid;
+      gap: 3px;
+    }
+
+    .segmented-control.two-cols {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .segmented-control.three-cols {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .segmented-option {
+      position: relative;
+    }
+
+    .segmented-option input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .segmented-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 32px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background 0.18s cubic-bezier(0.16, 1, 0.3, 1), color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .segmented-option input[type="radio"]:checked + .segmented-label {
+      background: var(--segmented-active);
+      color: var(--text-primary);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 0.5px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    .format-badge {
+      font-size: 9.5px;
+      font-weight: 600;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-secondary);
+    }
+
+    .segmented-option input[type="radio"]:checked + .segmented-label .format-badge {
+      background: rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
+    }
+
+    /* Botón de acción principal */
+    .btn-download {
+      position: relative;
+      width: 100%;
+      height: 44px;
+      margin-top: 4px;
+      background: var(--btn-primary);
+      border: none;
+      border-radius: var(--radius-btn);
+      color: #ffffff;
+      font-size: 13.5px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      transition: background-color 0.16s ease, transform 0.12s ease, opacity 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .btn-download:hover:not(:disabled) {
+      background: var(--btn-primary-hover);
+      box-shadow: 0 6px 16px rgba(0, 122, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    }
+
+    .btn-download:active:not(:disabled) {
+      background: var(--btn-primary-active);
+      transform: scale(0.99);
+      box-shadow: 0 2px 6px rgba(0, 122, 255, 0.25);
+    }
+
+    .btn-download:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Iconos vectoriales nativos */
+    .icon-svg {
+      width: 16px;
+      height: 16px;
+      stroke-width: 2;
+      stroke: currentColor;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Spinner de progreso */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .is-loading .spinner {
+      display: inline-block;
+    }
+
+    .is-loading .icon-download-arrow {
+      display: none;
+    }
+
+    /* Notificación / Mensajes de estado */
+    .status-banner {
+      display: none;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 12.5px;
+      line-height: 1.45;
+      align-items: flex-start;
+      gap: 9px;
+      transition: opacity 0.2s ease;
+    }
+
+    .status-banner.show {
+      display: flex;
+    }
+
+    .status-banner.error {
+      background: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      color: #ff9f97;
+    }
+
+    .status-banner.success {
+      background: var(--success-bg);
+      border: 1px solid var(--success-border);
+      color: #8ce99a;
+    }
+
+    .status-banner.info {
+      background: rgba(0, 122, 255, 0.12);
+      border: 1px solid rgba(0, 122, 255, 0.3);
+      color: #8ac0ff;
+    }
+
+    .status-icon {
+      flex-shrink: 0;
+      width: 15px;
+      height: 15px;
+      margin-top: 1px;
+    }
+
+    .status-text {
+      flex: 1;
+      word-break: break-word;
+      user-select: text;
+    }
+  </style>
+</head>
+<body>
+
+  <main class="container">
+    <div class="window-card">
+      <header class="window-header">
+        <div class="traffic-lights">
+          <span class="traffic-dot dot-close"></span>
+          <span class="traffic-dot dot-min"></span>
+          <span class="traffic-dot dot-max"></span>
+        </div>
+        <div class="window-title">YouTube Downloader</div>
+      </header>
+
+      <form id="downloadForm" class="window-body">
+        <div class="field-group">
+          <label for="videoUrl" class="field-label">URL del video</label>
+          <div class="input-wrapper">
+            <input
+              type="url"
+              id="videoUrl"
+              class="text-input"
+              placeholder="https://www.youtube.com/watch?v=..."
+              required
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Formato</label>
+          <div class="segmented-control two-cols" role="radiogroup">
+            <label class="segmented-option">
+              <input type="radio" name="format" value="mp4" checked />
+              <span class="segmented-label">
+                <span>MP4</span>
+                <span class="format-badge">Video</span>
+              </span>
+            </label>
+            <label class="segmented-option">
+              <input type="radio" name="format" value="mp3" />
+              <span class="segmented-label">
+                <span>MP3</span>
+                <span class="format-badge">Audio</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field-group" id="qualityGroup">
+          <label class="field-label">Resolución</label>
+          <div class="segmented-control three-cols" role="radiogroup">
+            <label class="segmented-option">
+              <input type="radio" name="quality" value="1080" checked />
+              <span class="segmented-label">
+                <span>1080p</span>
+                <span class="format-badge">FHD</span>
+              </span>
+            </label>
+            <label class="segmented-option">
+              <input type="radio" name="quality" value="720" />
+              <span class="segmented-label">
+                <span>720p</span>
+                <span class="format-badge">HD</span>
+              </span>
+            </label>
+            <label class="segmented-option">
+              <input type="radio" name="quality" value="360" />
+              <span class="segmented-label">
+                <span>360p</span>
+                <span class="format-badge">SD</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn-download">
+          <span class="spinner" aria-hidden="true"></span>
+          <svg class="icon-svg icon-download-arrow" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span id="btnText">Descargar</span>
+        </button>
+
+        <div id="statusBanner" class="status-banner" role="alert">
+          <svg id="statusIcon" class="icon-svg status-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span id="statusText" class="status-text"></span>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      if (navigator.userAgent.includes('Electron')) {
+        document.body.classList.add('is-electron');
+      }
+
+      const form = document.getElementById('downloadForm');
+      const inputUrl = document.getElementById('videoUrl');
+      const submitBtn = document.getElementById('submitBtn');
+      const btnText = document.getElementById('btnText');
+      const statusBanner = document.getElementById('statusBanner');
+      const statusText = document.getElementById('statusText');
+      const statusIcon = document.getElementById('statusIcon');
+      const qualityGroup = document.getElementById('qualityGroup');
+      const formatRadios = document.querySelectorAll('input[name="format"]');
+
+      // Ocultar o mostrar selector de resolución según el formato elegido
+      formatRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+          if (radio.value === 'mp3') {
+            qualityGroup.classList.add('hidden');
+          } else {
+            qualityGroup.classList.remove('hidden');
+          }
+        });
+      });
+
+      function hideStatus() {
+        statusBanner.className = 'status-banner';
+        statusText.textContent = '';
+      }
+
+      function showStatus(type, message) {
+        statusBanner.className = `status-banner show ${type}`;
+        statusText.textContent = message;
+
+        if (type === 'error') {
+          statusIcon.innerHTML = `
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          `;
+        } else if (type === 'success') {
+          statusIcon.innerHTML = `
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          `;
+        } else {
+          statusIcon.innerHTML = `
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          `;
+        }
+      }
+
+      function setLoading(isLoading) {
+        if (isLoading) {
+          submitBtn.disabled = true;
+          submitBtn.classList.add('is-loading');
+          btnText.textContent = 'Procesando descarga...';
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('is-loading');
+          btnText.textContent = 'Descargar';
+        }
+      }
+
+      function parseFilename(disposition, fallback) {
+        if (!disposition) return fallback;
+        const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+        if (utf8Match && utf8Match[1]) {
+          try {
+            return decodeURIComponent(utf8Match[1]);
+          } catch (e) {}
+        }
+        const standardMatch = disposition.match(/filename="?([^";]+)"?/i);
+        if (standardMatch && standardMatch[1]) {
+          return standardMatch[1];
+        }
+        return fallback;
+      }
+
+      form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        hideStatus();
+
+        const url = inputUrl.value.trim();
+        const selectedFormatRadio = document.querySelector('input[name="format"]:checked');
+        const format = selectedFormatRadio ? selectedFormatRadio.value : 'mp4';
+        
+        const selectedQualityRadio = document.querySelector('input[name="quality"]:checked');
+        const quality = selectedQualityRadio ? selectedQualityRadio.value : '1080';
+
+        if (!url) {
+          showStatus('error', 'Por favor ingresa una URL válida.');
+          return;
+        }
+
+        setLoading(true);
+        const formatDesc = format === 'mp4' ? `video MP4 (${quality}p)` : 'audio MP3';
+        showStatus('info', `Descargando y procesando ${formatDesc}...`);
+
+        try {
+          const response = await fetch('/api/download', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ url, format, quality })
+          });
+
+          if (!response.ok) {
+            let errorMessage = `Error del servidor (${response.status})`;
+            try {
+              const errorData = await response.json();
+              if (errorData && errorData.error) {
+                errorMessage = errorData.error;
+              }
+            } catch (err) {
+              const textErr = await response.text();
+              if (textErr) errorMessage = textErr;
+            }
+            showStatus('error', errorMessage);
+            setLoading(false);
+            return;
+          }
+
+          const disposition = response.headers.get('Content-Disposition');
+          const fallbackName = `youtube_${Date.now()}_${quality}p.${format}`;
+          const filename = parseFilename(disposition, fallbackName);
+
+          const blob = await response.blob();
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(downloadUrl);
+
+          showStatus('success', `Archivo descargado: ${filename}`);
+        } catch (error) {
+          showStatus('error', `Error de conexión: ${error.message || 'No se pudo completar la solicitud.'}`);
+        } finally {
+          setLoading(false);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
